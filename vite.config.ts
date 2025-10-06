@@ -4,6 +4,7 @@
   import path from 'path';
 
   export default defineConfig({
+     base: '/', // ensures all assets are loaded relative to root
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
