@@ -18,19 +18,30 @@ export function NurseLogin({ onLogin, onBack }: NurseLoginProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+import { supabase } from '../lib/supabaseClient'; // add this near the top
 
-    // Simple validation for demo
-    if (!email || !password) {
-      setError('Please enter both email and password');
-      return;
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
 
-    // For demo purposes, accept any credentials
-    onLogin();
-  };
+  if (!email || !password) {
+    setError('Please enter both email and password');
+    return;
+  }
+
+  const { data, error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (signInError) {
+    setError(signInError.message);
+    return;
+  }
+
+  onLogin(); // if success, go to portal
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[var(--color-brand-gradient-4)] to-[var(--color-brand-gradient-5)] flex items-center justify-center p-4">
