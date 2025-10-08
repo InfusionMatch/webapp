@@ -1,17 +1,548 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
-=========================================================================*/
 const schema = a.schema({
-  Todo: a
+  // ============================================================================
+  // USER PROFILES
+  // ============================================================================
+  
+  NurseProfile: a
     .model({
-      content: a.string(),
+      userId: a.id().required(),
+      email: a.email().required(),
+      firstName: a.string().required(),
+      lastName: a.string().required(),
+      phoneNumber: a.phone().required(),
+      
+      // Professional info
+      licenseNumber: a.string(),
+      licenseState: a.string(),
+      licenseExpiry: a.date(),
+      specialties: a.string().array(),
+      certifications: a.string().array(),
+      
+      // Profile details
+      bio: a.string(),
+      avatarUrl: a.string(),
+      hourlyRate: a.float(),
+      
+      // Address (for distance calculations)
+      street: a.string(),
+      city: a.string(),
+      state: a.string(),
+      zipCode: a.string(),
+      latitude: a.float(),
+      longitude: a.float(),
+      
+      // Stats
+      rating: a.float().default(0),
+      totalVisits: a.integer().default(0),
+      completedVisits: a.integer().default(0),
+      monthlyEarnings: a.float().default(0),
+      lifetimeEarnings: a.float().default(0),
+      
+      // Verification status
+      backgroundCheckStatus: a.enum(['pending', 'approved', 'rejected', 'expired']),
+      backgroundCheckDate: a.date(),
+      backgroundCheckExpiry: a.date(),
+      nursysVerified: a.boolean().default(false),
+      nursysVerifiedDate: a.date(),
+      
+      // Onboarding
+      onboardingComplete: a.boolean().default(false),
+      onboardingStep: a.integer().default(0),
+      
+      // Payment info
+      stripeAccountId: a.string(),
+      gustoEmployeeId: a.string(),
+      
+      // Availability
+      isAvailable: a.boolean().default(true),
+      availabilityNotes: a.string(),
+      
+      // Account status
+      accountStatus: a.enum(['active', 'suspended', 'deactivated']).default('active'),
+      suspensionReason: a.string(),
+      
+      // Timestamps
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+      lastLoginAt: a.datetime()
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization([
+      a.allow.owner().to(['read', 'update']),
+      a.allow.authenticated().to(['read'])  // Others can view public profile
+    ]),
+
+  AdminProfile: a
+    .model({
+      userId: a.id().required(),
+      email: a.email().required(),
+      firstName: a.string().required(),
+      lastName: a.string().required(),
+      role: a.enum(['superadmin', 'support', 'compliance', 'finance']),
+      permissions: a.string().array(), // Granular permissions
+      
+      // Activity tracking
+      lastLoginAt: a.datetime(),
+      
+      createdAt: a.datetime(),
+      updatedAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read'])
+    ]),
+
+  // ============================================================================
+  // VISITS/JOBS (Posted by Platform/Admins)
+  // ============================================================================
+  
+  Visit: a
+    .model({
+      postedBy: a.id().required(), // Admin who posted it
+      assignedNurseId: a.id(),
+      
+      // Visit details
+      title: a.string().required(),
+      description: a.string(),
+      medicationType: a.enum([
+        'remicade',
+        'humira',
+        'stelara',
+        'entyvio',
+        'orencia',
+        'simponi',
+        'actemra',
+        'hydration',
+        'iron_infusion',
+        'antibiotic',
+        'chemotherapy',
+        'picc_care',
+        'wound_care',
+        'lab_draw',
+        'other'
+      ]).required(),
+      medication: a.string(),
+      dosage: a.string(),
+      
+      // Client/Patient info (anonymized until accepted)
+      clientName: a.string().required(), // Healthcare facility or home care agency
+      clientPhone: a.string(),
+      clientEmail: a.string(),
+      patientCode: a.string().required(),
+      patientName: a.string(),  // Revealed after acceptance
+      patientPhone: a.string(), // Revealed after acceptance
+      patientAge: a.integer(),
+      patientNotes: a.string(), // Medical history, allergies, etc.
+      
+      // Location
+      address: a.string().required(),
+      city: a.string().required(),
+      state: a.string().required(),
+      zipCode: a.string().required(),
+      latitude: a.float(),
+      longitude: a.float(),
+      locationNotes: a.string(), // Parking, entry instructions, etc.
+      
+      // Scheduling
+      visitDate: a.date().required(),
+      startTime: a.time().required(),
+      endTime: a.time().required(),
+      duration: a.integer(), // in minutes
+      flexibleTiming: a.boolean().default(false),
+      timeWindow: a.string(), // "Flexible 9:00 AM - 3:00 PM"
+      
+      // Payment
+      hourlyRate: a.float().required(),
+      totalPay: a.float().required(),
+      platformFee: a.float(),
+      nurseEarnings: a.float(),
+      
+      // Requirements
+      requiredCertifications: a.string().array(),
+      specialInstructions: a.string(),
+      suppliesProvided: a.string().array(),
+      suppliesNurseProvides: a.string().array(),
+      
+      // Status
+      status: a.enum([
+        'draft',
+        'posted',
+        'assigned',
+        'accepted',
+        'confirmed',
+        'in_progress',
+        'completed',
+        'cancelled',
+        'disputed',
+        'no_show'
+      ]).default('draft'),
+      
+      // Confirmation
+      confirmationCallMade: a.boolean().default(false),
+      confirmationCallDate: a.datetime(),
+      confirmationNotes: a.string(),
+      
+      // Visit outcome
+      visitStartedAt: a.datetime(),
+      visitCompletedAt: a.datetime(),
+      visitNotes: a.string(),
+      visitDocuments: a.string().array(), // S3 keys (photos, reports, etc.)
+      
+      // Ratings & Reviews
+      nurseRating: a.integer(),
+      nurseReview: a.string(),
+      clientRating: a.integer(),
+      clientReview: a.string(),
+      platformRating: a.integer(), // Nurse rates the platform/visit quality
+      platformReview: a.string(),
+      
+      // Cancellation
+      cancelledBy: a.id(),
+      cancellationReason: a.string(),
+      cancelledAt: a.datetime(),
+      cancellationFee: a.float(),
+      
+      // Timestamps
+      createdAt: a.datetime(),
+      updatedAt: a.datetime(),
+      publishedAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read']),
+      a.allow.owner().to(['read', 'update'])
+    ]),
+
+  // ============================================================================
+  // APPLICATIONS (Nurses apply to visits)
+  // ============================================================================
+  
+  Application: a
+    .model({
+      visitId: a.id().required(),
+      nurseId: a.id().required(),
+      
+      // Application details
+      coverLetter: a.string(),
+      availabilityConfirmed: a.boolean().default(true),
+      
+      // Status
+      status: a.enum([
+        'pending',
+        'accepted',
+        'rejected',
+        'withdrawn',
+        'expired'
+      ]).default('pending'),
+      
+      // Response (from admin)
+      adminResponse: a.string(),
+      respondedBy: a.id(),
+      respondedAt: a.datetime(),
+      
+      // Timestamps
+      createdAt: a.datetime(),
+      updatedAt: a.datetime()
+    })
+    .authorization([
+      a.allow.owner().to(['read', 'update']),
+      a.allow.authenticated().to(['read', 'create'])
+    ]),
+
+  // ============================================================================
+  // CREDENTIALS
+  // ============================================================================
+  
+  Credential: a
+    .model({
+      nurseId: a.id().required(),
+      
+      type: a.enum([
+        'rn_license',
+        'lpn_license',
+        'iv_certification',
+        'cpr_certification',
+        'bls_certification',
+        'acls_certification',
+        'pals_certification',
+        'oncology_certification',
+        'insurance_certificate',
+        'background_check',
+        'tb_test',
+        'hepatitis_vaccine',
+        'other'
+      ]).required(),
+      
+      title: a.string().required(),
+      issuingOrganization: a.string(),
+      credentialNumber: a.string(),
+      issueDate: a.date(),
+      expiryDate: a.date(),
+      
+      // Verification
+      verificationStatus: a.enum([
+        'pending',
+        'verified',
+        'rejected',
+        'expired'
+      ]).default('pending'),
+      verifiedBy: a.string(),
+      verifiedAt: a.datetime(),
+      verificationNotes: a.string(),
+      
+      // Document
+      documentUrl: a.string(), // S3 key
+      
+      // Auto-verification (NURSYS for RN licenses)
+      autoVerified: a.boolean().default(false),
+      nursysData: a.json(),
+      
+      // Expiry notifications
+      expiryNotificationSent: a.boolean().default(false),
+      
+      createdAt: a.datetime(),
+      updatedAt: a.datetime()
+    })
+    .authorization([
+      a.allow.owner().to(['read', 'create', 'update']),
+      a.allow.authenticated().to(['read'])
+    ]),
+
+  // ============================================================================
+  // MESSAGING
+  // ============================================================================
+  
+  Conversation: a
+    .model({
+      participantIds: a.id().array().required(),
+      participantNames: a.string().array(),
+      visitId: a.id(),
+      
+      subject: a.string(),
+      lastMessageAt: a.datetime(),
+      lastMessagePreview: a.string(),
+      lastMessageSenderId: a.id(),
+      
+      // Unread counts per participant
+      unreadCounts: a.json(), // { "userId1": 2, "userId2": 0 }
+      
+      createdAt: a.datetime(),
+      updatedAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read', 'create', 'update'])
+    ]),
+
+  Message: a
+    .model({
+      conversationId: a.id().required(),
+      senderId: a.id().required(),
+      senderName: a.string(),
+      senderType: a.enum(['nurse', 'admin', 'system']),
+      
+      content: a.string().required(),
+      messageType: a.enum(['text', 'document', 'system']).default('text'),
+      
+      // Attachments
+      attachments: a.string().array(), // S3 keys
+      attachmentNames: a.string().array(),
+      
+      // Read status
+      readBy: a.id().array(),
+      readAt: a.json(), // { "userId": "timestamp" }
+      
+      createdAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read', 'create'])
+    ]),
+
+  // ============================================================================
+  // NOTIFICATIONS
+  // ============================================================================
+  
+  Notification: a
+    .model({
+      userId: a.id().required(),
+      
+      type: a.enum([
+        'new_visit',
+        'application_received',
+        'application_accepted',
+        'application_rejected',
+        'visit_assigned',
+        'visit_reminder',
+        'visit_confirmed',
+        'visit_cancelled',
+        'visit_started',
+        'visit_completed',
+        'payment_processed',
+        'message_received',
+        'credential_expiring',
+        'credential_expired',
+        'account_suspended',
+        'system_alert',
+        'platform_update'
+      ]).required(),
+      
+      title: a.string().required(),
+      message: a.string().required(),
+      
+      // Related entities
+      visitId: a.id(),
+      applicationId: a.id(),
+      conversationId: a.id(),
+      credentialId: a.id(),
+      
+      // Priority
+      priority: a.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+      
+      // Status
+      isRead: a.boolean().default(false),
+      readAt: a.datetime(),
+      
+      // Delivery
+      emailSent: a.boolean().default(false),
+      smsSent: a.boolean().default(false),
+      emailSentAt: a.datetime(),
+      smsSentAt: a.datetime(),
+      
+      // Actions
+      actionUrl: a.string(),
+      actionLabel: a.string(),
+      
+      createdAt: a.datetime()
+    })
+    .authorization([
+      a.allow.owner().to(['read', 'update'])
+    ]),
+
+  // ============================================================================
+  // PAYMENTS
+  // ============================================================================
+  
+  Payment: a
+    .model({
+      visitId: a.id().required(),
+      nurseId: a.id().required(),
+      
+      // Amounts
+      totalAmount: a.float().required(),
+      nurseAmount: a.float().required(),
+      platformFee: a.float().required(),
+      
+      // Payment method
+      paymentMethod: a.enum(['stripe', 'direct_deposit', 'check', 'other']).default('stripe'),
+      
+      // Stripe
+      stripePaymentIntentId: a.string(),
+      stripeTransferId: a.string(),
+      stripeChargeId: a.string(),
+      
+      // Gusto
+      gustoPaymentId: a.string(),
+      
+      // Status
+      status: a.enum([
+        'pending',
+        'processing',
+        'authorized',
+        'captured',
+        'transferred',
+        'completed',
+        'refunded',
+        'failed',
+        'disputed'
+      ]).default('pending'),
+      
+      // Failure details
+      failureReason: a.string(),
+      failureCode: a.string(),
+      
+      // Timestamps
+      authorizedAt: a.datetime(),
+      capturedAt: a.datetime(),
+      transferredAt: a.datetime(),
+      completedAt: a.datetime(),
+      refundedAt: a.datetime(),
+      
+      // Tax reporting
+      taxYear: a.integer(),
+      reported1099: a.boolean().default(false),
+      
+      createdAt: a.datetime(),
+      updatedAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read'])
+    ]),
+
+  // ============================================================================
+  // ANALYTICS (Admin only)
+  // ============================================================================
+  
+  PlatformAnalytics: a
+    .model({
+      date: a.date().required(),
+      
+      // User metrics
+      totalNurses: a.integer().default(0),
+      activeNurses: a.integer().default(0),
+      newNurses: a.integer().default(0),
+      verifiedNurses: a.integer().default(0),
+      
+      // Visit metrics
+      visitsPosted: a.integer().default(0),
+      visitsCompleted: a.integer().default(0),
+      visitsCancelled: a.integer().default(0),
+      visitsNoShow: a.integer().default(0),
+      averageVisitDuration: a.float().default(0),
+      
+      // Application metrics
+      totalApplications: a.integer().default(0),
+      applicationAcceptanceRate: a.float().default(0),
+      
+      // Financial metrics
+      totalRevenue: a.float().default(0),
+      platformFees: a.float().default(0),
+      nursePayouts: a.float().default(0),
+      
+      // Performance
+      averageNurseRating: a.float().default(0),
+      averageClientRating: a.float().default(0),
+      completionRate: a.float().default(0),
+      onTimeRate: a.float().default(0),
+      
+      // Popular medication types
+      topMedicationTypes: a.json(), // { "remicade": 45, "hydration": 32, ... }
+      
+      createdAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read'])
+    ]),
+
+  // ============================================================================
+  // ADMIN AUDIT LOG
+  // ============================================================================
+  
+  AuditLog: a
+    .model({
+      adminId: a.id().required(),
+      action: a.string().required(),
+      entityType: a.string(), // 'nurse', 'visit', 'credential', etc.
+      entityId: a.id(),
+      
+      changesBefore: a.json(),
+      changesAfter: a.json(),
+      
+      ipAddress: a.string(),
+      userAgent: a.string(),
+      
+      createdAt: a.datetime()
+    })
+    .authorization([
+      a.allow.authenticated().to(['read', 'create'])
+    ])
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -19,35 +550,6 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'identityPool',
-  },
+    defaultAuthorizationMode: 'userPool'  // HIPAA: Require authentication
+  }
 });
-
-/*== STEP 2 ===============================================================
-Go to your frontend source code. From your client-side code, generate a
-Data client to make CRUDL requests to your table. (THIS SNIPPET WILL ONLY
-WORK IN THE FRONTEND CODE FILE.)
-
-Using JavaScript or Next.js React Server Components, Middleware, Server 
-Actions or Pages Router? Review how to generate Data clients for those use
-cases: https://docs.amplify.aws/gen2/build-a-backend/data/connect-to-API/
-=========================================================================*/
-
-/*
-"use client"
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-
-const client = generateClient<Schema>() // use this Data client for CRUDL requests
-*/
-
-/*== STEP 3 ===============================================================
-Fetch records from the database and use them in your frontend component.
-(THIS SNIPPET WILL ONLY WORK IN THE FRONTEND CODE FILE.)
-=========================================================================*/
-
-/* For example, in a React component, you can use this snippet in your
-  function's RETURN statement */
-// const { data: todos } = await client.models.Todo.list()
-
-// return <ul>{todos.map(todo => <li key={todo.id}>{todo.content}</li>)}</ul>

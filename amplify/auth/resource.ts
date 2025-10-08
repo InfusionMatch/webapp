@@ -1,11 +1,50 @@
 import { defineAuth } from '@aws-amplify/backend';
 
-/**
- * Define and configure your auth resource
- * @see https://docs.amplify.aws/gen2/build-a-backend/auth
- */
 export const auth = defineAuth({
   loginWith: {
-    email: true,
+    email: {
+      verificationEmailStyle: 'CODE',
+      verificationEmailSubject: 'Verify your NorthPeak Care account',
+      verificationEmailBody: (createCode) => 
+        `Welcome to NorthPeak Care! Your verification code is ${createCode()}`
+    }
   },
+  // HIPAA: Strong password requirements
+  passwordPolicy: {
+    minLength: 12,
+    requireLowercase: true,
+    requireUppercase: true,
+    requireNumbers: true,
+    requireSymbols: true
+  },
+  userAttributes: {
+    email: {
+      required: true,
+      mutable: false  // HIPAA: Immutable for audit trail
+    },
+    phoneNumber: {
+      required: true,
+      mutable: true
+    },
+    // Custom attributes for user roles
+    'custom:userType': {
+      dataType: 'String',
+      mutable: false  // 'nurse' or 'admin'
+    },
+    'custom:profileId': {
+      dataType: 'String',
+      mutable: false
+    },
+    'custom:onboardingComplete': {
+      dataType: 'String',
+      mutable: true
+    }
+  },
+  // HIPAA: Enable MFA (optional for nurses, required for admins via policy)
+  multifactor: {
+    mode: 'OPTIONAL',
+    totp: true,
+    sms: true
+  },
+  accountRecovery: 'EMAIL_ONLY'
 });
