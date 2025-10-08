@@ -60,7 +60,7 @@ const schema = a.schema({
       availabilityNotes: a.string(),
       
       // Account status
-      accountStatus: a.enum(['active', 'suspended', 'deactivated']).default('active'),
+      accountStatus: a.enum(['active', 'suspended', 'deactivated']),
       suspensionReason: a.string(),
       
       // Timestamps
@@ -163,7 +163,7 @@ const schema = a.schema({
       suppliesProvided: a.string().array(),
       suppliesNurseProvides: a.string().array(),
       
-      // Status
+      // Status (no default on enum)
       status: a.enum([
         'draft',
         'posted',
@@ -175,7 +175,7 @@ const schema = a.schema({
         'cancelled',
         'disputed',
         'no_show'
-      ]).default('draft'),
+      ]),
       
       // Confirmation
       confirmationCallMade: a.boolean().default(false),
@@ -225,14 +225,14 @@ const schema = a.schema({
       coverLetter: a.string(),
       availabilityConfirmed: a.boolean().default(true),
       
-      // Status
+      // Status (no default on enum)
       status: a.enum([
         'pending',
         'accepted',
         'rejected',
         'withdrawn',
         'expired'
-      ]).default('pending'),
+      ]),
       
       // Response
       adminResponse: a.string(),
@@ -278,13 +278,13 @@ const schema = a.schema({
       issueDate: a.date(),
       expiryDate: a.date(),
       
-      // Verification
+      // Verification (no default on enum)
       verificationStatus: a.enum([
         'pending',
         'verified',
         'rejected',
         'expired'
-      ]).default('pending'),
+      ]),
       verifiedBy: a.string(),
       verifiedAt: a.datetime(),
       verificationNotes: a.string(),
@@ -339,7 +339,7 @@ const schema = a.schema({
       senderType: a.enum(['nurse', 'admin', 'system']),
       
       content: a.string().required(),
-      messageType: a.enum(['text', 'document', 'system']).default('text'),
+      messageType: a.enum(['text', 'document', 'system']),
       
       // Attachments
       attachments: a.string().array(),
@@ -392,8 +392,8 @@ const schema = a.schema({
       conversationId: a.id(),
       credentialId: a.id(),
       
-      // Priority
-      priority: a.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+      // Priority (no default on enum)
+      priority: a.enum(['low', 'normal', 'high', 'urgent']),
       
       // Status
       isRead: a.boolean().default(false),
@@ -429,8 +429,8 @@ const schema = a.schema({
       nurseAmount: a.float().required(),
       platformFee: a.float().required(),
       
-      // Payment method
-      paymentMethod: a.enum(['stripe', 'direct_deposit', 'check', 'other']).default('stripe'),
+      // Payment method (no default on enum)
+      paymentMethod: a.enum(['stripe', 'direct_deposit', 'check', 'other']),
       
       // Stripe
       stripePaymentIntentId: a.string(),
@@ -440,7 +440,7 @@ const schema = a.schema({
       // Gusto
       gustoPaymentId: a.string(),
       
-      // Status
+      // Status (no default on enum)
       status: a.enum([
         'pending',
         'processing',
@@ -451,7 +451,7 @@ const schema = a.schema({
         'refunded',
         'failed',
         'disputed'
-      ]).default('pending'),
+      ]),
       
       // Failure details
       failureReason: a.string(),
