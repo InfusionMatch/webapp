@@ -68,9 +68,9 @@ const schema = a.schema({
       updatedAt: a.datetime(),
       lastLoginAt: a.datetime()
     })
-    .authorization([
-      a.allow.owner().to(['read', 'update']),
-      a.allow.authenticated().to(['read'])  // Others can view public profile
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read'])
     ]),
 
   AdminProfile: a
@@ -80,7 +80,7 @@ const schema = a.schema({
       firstName: a.string().required(),
       lastName: a.string().required(),
       role: a.enum(['superadmin', 'support', 'compliance', 'finance']),
-      permissions: a.string().array(), // Granular permissions
+      permissions: a.string().array(),
       
       // Activity tracking
       lastLoginAt: a.datetime(),
@@ -88,8 +88,8 @@ const schema = a.schema({
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read'])
     ]),
 
   // ============================================================================
@@ -98,7 +98,7 @@ const schema = a.schema({
   
   Visit: a
     .model({
-      postedBy: a.id().required(), // Admin who posted it
+      postedBy: a.id().required(),
       assignedNurseId: a.id(),
       
       // Visit details
@@ -124,15 +124,15 @@ const schema = a.schema({
       medication: a.string(),
       dosage: a.string(),
       
-      // Client/Patient info (anonymized until accepted)
-      clientName: a.string().required(), // Healthcare facility or home care agency
+      // Client/Patient info
+      clientName: a.string().required(),
       clientPhone: a.string(),
       clientEmail: a.string(),
       patientCode: a.string().required(),
-      patientName: a.string(),  // Revealed after acceptance
-      patientPhone: a.string(), // Revealed after acceptance
+      patientName: a.string(),
+      patientPhone: a.string(),
       patientAge: a.integer(),
-      patientNotes: a.string(), // Medical history, allergies, etc.
+      patientNotes: a.string(),
       
       // Location
       address: a.string().required(),
@@ -141,15 +141,15 @@ const schema = a.schema({
       zipCode: a.string().required(),
       latitude: a.float(),
       longitude: a.float(),
-      locationNotes: a.string(), // Parking, entry instructions, etc.
+      locationNotes: a.string(),
       
       // Scheduling
       visitDate: a.date().required(),
       startTime: a.time().required(),
       endTime: a.time().required(),
-      duration: a.integer(), // in minutes
+      duration: a.integer(),
       flexibleTiming: a.boolean().default(false),
-      timeWindow: a.string(), // "Flexible 9:00 AM - 3:00 PM"
+      timeWindow: a.string(),
       
       // Payment
       hourlyRate: a.float().required(),
@@ -186,14 +186,14 @@ const schema = a.schema({
       visitStartedAt: a.datetime(),
       visitCompletedAt: a.datetime(),
       visitNotes: a.string(),
-      visitDocuments: a.string().array(), // S3 keys (photos, reports, etc.)
+      visitDocuments: a.string().array(),
       
       // Ratings & Reviews
       nurseRating: a.integer(),
       nurseReview: a.string(),
       clientRating: a.integer(),
       clientReview: a.string(),
-      platformRating: a.integer(), // Nurse rates the platform/visit quality
+      platformRating: a.integer(),
       platformReview: a.string(),
       
       // Cancellation
@@ -207,13 +207,13 @@ const schema = a.schema({
       updatedAt: a.datetime(),
       publishedAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read']),
-      a.allow.owner().to(['read', 'update'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.owner()
     ]),
 
   // ============================================================================
-  // APPLICATIONS (Nurses apply to visits)
+  // APPLICATIONS
   // ============================================================================
   
   Application: a
@@ -234,7 +234,7 @@ const schema = a.schema({
         'expired'
       ]).default('pending'),
       
-      // Response (from admin)
+      // Response
       adminResponse: a.string(),
       respondedBy: a.id(),
       respondedAt: a.datetime(),
@@ -243,9 +243,9 @@ const schema = a.schema({
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
-    .authorization([
-      a.allow.owner().to(['read', 'update']),
-      a.allow.authenticated().to(['read', 'create'])
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read', 'create'])
     ]),
 
   // ============================================================================
@@ -290,9 +290,9 @@ const schema = a.schema({
       verificationNotes: a.string(),
       
       // Document
-      documentUrl: a.string(), // S3 key
+      documentUrl: a.string(),
       
-      // Auto-verification (NURSYS for RN licenses)
+      // Auto-verification
       autoVerified: a.boolean().default(false),
       nursysData: a.json(),
       
@@ -302,9 +302,9 @@ const schema = a.schema({
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
-    .authorization([
-      a.allow.owner().to(['read', 'create', 'update']),
-      a.allow.authenticated().to(['read'])
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['read'])
     ]),
 
   // ============================================================================
@@ -322,14 +322,13 @@ const schema = a.schema({
       lastMessagePreview: a.string(),
       lastMessageSenderId: a.id(),
       
-      // Unread counts per participant
-      unreadCounts: a.json(), // { "userId1": 2, "userId2": 0 }
+      unreadCounts: a.json(),
       
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read', 'create', 'update'])
+    .authorization((allow) => [
+      allow.authenticated()
     ]),
 
   Message: a
@@ -343,17 +342,17 @@ const schema = a.schema({
       messageType: a.enum(['text', 'document', 'system']).default('text'),
       
       // Attachments
-      attachments: a.string().array(), // S3 keys
+      attachments: a.string().array(),
       attachmentNames: a.string().array(),
       
       // Read status
       readBy: a.id().array(),
-      readAt: a.json(), // { "userId": "timestamp" }
+      readAt: a.json(),
       
       createdAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read', 'create'])
+    .authorization((allow) => [
+      allow.authenticated()
     ]),
 
   // ============================================================================
@@ -412,8 +411,8 @@ const schema = a.schema({
       
       createdAt: a.datetime()
     })
-    .authorization([
-      a.allow.owner().to(['read', 'update'])
+    .authorization((allow) => [
+      allow.owner()
     ]),
 
   // ============================================================================
@@ -472,12 +471,12 @@ const schema = a.schema({
       createdAt: a.datetime(),
       updatedAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read'])
     ]),
 
   // ============================================================================
-  // ANALYTICS (Admin only)
+  // ANALYTICS
   // ============================================================================
   
   PlatformAnalytics: a
@@ -513,23 +512,23 @@ const schema = a.schema({
       onTimeRate: a.float().default(0),
       
       // Popular medication types
-      topMedicationTypes: a.json(), // { "remicade": 45, "hydration": 32, ... }
+      topMedicationTypes: a.json(),
       
       createdAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read'])
     ]),
 
   // ============================================================================
-  // ADMIN AUDIT LOG
+  // AUDIT LOG
   // ============================================================================
   
   AuditLog: a
     .model({
       adminId: a.id().required(),
       action: a.string().required(),
-      entityType: a.string(), // 'nurse', 'visit', 'credential', etc.
+      entityType: a.string(),
       entityId: a.id(),
       
       changesBefore: a.json(),
@@ -540,8 +539,8 @@ const schema = a.schema({
       
       createdAt: a.datetime()
     })
-    .authorization([
-      a.allow.authenticated().to(['read', 'create'])
+    .authorization((allow) => [
+      allow.authenticated()
     ])
 });
 
@@ -550,6 +549,6 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool'  // HIPAA: Require authentication
+    defaultAuthorizationMode: 'userPool'
   }
 });
