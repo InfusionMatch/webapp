@@ -2,6 +2,7 @@ import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { storage } from './storage/resource';
+import { CfnBucket } from 'aws-cdk-lib/aws-s3';
 
 const backend = defineBackend({
   auth,
@@ -25,8 +26,11 @@ dataResources.cfnResources.cfnGraphqlApi.logConfig = {
 // HIPAA: S3 bucket encryption and versioning
 const s3Bucket = backend.storage.resources.bucket;
 
+// Access the underlying CfnBucket to use addPropertyOverride
+const cfnBucket = s3Bucket.node.defaultChild as CfnBucket;
+
 // Enable server-side encryption
-s3Bucket.addPropertyOverride('BucketEncryption', {
+cfnBucket.addPropertyOverride('BucketEncryption', {
   ServerSideEncryptionConfiguration: [
     {
       ServerSideEncryptionByDefault: {
@@ -38,12 +42,12 @@ s3Bucket.addPropertyOverride('BucketEncryption', {
 });
 
 // Enable versioning for audit trail
-s3Bucket.addPropertyOverride('VersioningConfiguration', {
+cfnBucket.addPropertyOverride('VersioningConfiguration', {
   Status: 'Enabled'
 });
 
 // Enable lifecycle rules for old versions
-s3Bucket.addPropertyOverride('LifecycleConfiguration', {
+cfnBucket.addPropertyOverride('LifecycleConfiguration', {
   Rules: [
     {
       Id: 'DeleteOldVersions',
@@ -56,7 +60,7 @@ s3Bucket.addPropertyOverride('LifecycleConfiguration', {
 });
 
 // Block public access
-s3Bucket.addPropertyOverride('PublicAccessBlockConfiguration', {
+cfnBucket.addPropertyOverride('PublicAccessBlockConfiguration', {
   BlockPublicAcls: true,
   BlockPublicPolicy: true,
   IgnorePublicAcls: true,

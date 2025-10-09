@@ -120,7 +120,7 @@ const schema = a.schema({
         'wound_care',
         'lab_draw',
         'other'
-      ]).required(),
+      ]),
       medication: a.string(),
       dosage: a.string(),
       
@@ -270,7 +270,7 @@ const schema = a.schema({
         'tb_test',
         'hepatitis_vaccine',
         'other'
-      ]).required(),
+      ]),
       
       title: a.string().required(),
       issuingOrganization: a.string(),
@@ -381,7 +381,7 @@ const schema = a.schema({
         'account_suspended',
         'system_alert',
         'platform_update'
-      ]).required(),
+      ]),
       
       title: a.string().required(),
       message: a.string().required(),
