@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Checkbox } from "./ui/checkbox";
-import { UserCircle, Lock, ArrowLeft, AlertCircle } from "lucide-react";
-import logo from "figma:asset/e517e42b1d1ec299bfb1df70699dd4198ba56b80.png";
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { ArrowLeft } from 'lucide-react';
+import { authService } from '../services/auth-service';
+import { dataService } from '../services/data-service';
 
 interface NurseLoginProps {
   onLogin: () => void;
@@ -13,143 +13,271 @@ interface NurseLoginProps {
 }
 
 export function NurseLogin({ onLogin, onBack }: NurseLoginProps) {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [confirmationCode, setConfirmationCode] = useState('');
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
 
-    // Simple validation for demo
-    if (!email || !password) {
-      setError('Please enter both email and password');
-      return;
+    try {
+      const result = await authService.signIn({ email, password });
+      
+      if (result.isSignedIn) {
+        // Get user attributes
+        const userAttrs = await authService.getUserAttributes();
+        
+        // Check if profile exists
+        if (userAttrs) {
+          const profile = await dataService.getNurseProfile(userAttrs.userId);
+          
+          if (!profile) {
+            // Create profile if doesn't exist
+            await dataService.createNurseProfile({
+              userId: userAttrs.userId,
+              email: userAttrs.email,
+              firstName: firstName || 'Nurse',
+              lastName: lastName || 'User',
+              phoneNumber: phoneNumber || ''
+            });
+          }
+        }
+        
+        onLogin();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
     }
-
-    // For demo purposes, accept any credentials
-    onLogin();
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--color-brand-gradient-4)] to-[var(--color-brand-gradient-5)] flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Back Button */}
-        <Button 
-          variant="ghost" 
-          onClick={onBack}
-          className="text-white hover:bg-white/10"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Home
-        </Button>
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-        {/* Login Card */}
-        <Card className="shadow-2xl">
-          <CardHeader className="space-y-4 pb-6">
-            <div className="flex justify-center">
-              <img src={logo} alt="NorthPeak Care" className="h-12" />
-            </div>
-            <div className="text-center space-y-2">
-              <CardTitle className="text-2xl">Nurse Portal Login</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Access your IV therapy job opportunities
-              </p>
-            </div>
+    try {
+      const result = await authService.signUp({
+        email,
+        password,
+        firstName,
+        lastName,
+        phoneNumber,
+        userType: 'nurse'
+      });
+
+      if (result.nextStep.signUpStep === 'CONFIRM_SIGN_UP') {
+        setNeedsConfirmation(true);
+      } else if (result.nextStep.signUpStep === 'DONE') {
+        // Auto-signed in, create profile
+        const userAttrs = await authService.getUserAttributes();
+        if (userAttrs) {
+          await dataService.createNurseProfile({
+            userId: userAttrs.userId,
+            email,
+            firstName,
+            lastName,
+            phoneNumber
+          });
+        }
+        onLogin();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      await authService.confirmSignUp(email, confirmationCode);
+      
+      // Sign in after confirmation
+      await authService.signIn({ email, password });
+      
+      // Create profile
+      const userAttrs = await authService.getUserAttributes();
+      if (userAttrs) {
+        await dataService.createNurseProfile({
+          userId: userAttrs.userId,
+          email,
+          firstName,
+          lastName,
+          phoneNumber
+        });
+      }
+      
+      onLogin();
+    } catch (err: any) {
+      setError(err.message || 'Failed to confirm sign up');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (needsConfirmation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--color-brand-gradient-4)] to-[var(--color-brand-gradient-5)] p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Confirm Your Email</CardTitle>
+            <CardDescription>
+              We sent a verification code to {email}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleConfirmSignUp} className="space-y-4">
+              <div>
+                <Label htmlFor="code">Verification Code</Label>
+                <Input
+                  id="code"
+                  type="text"
+                  value={confirmationCode}
+                  onChange={(e) => setConfirmationCode(e.target.value)}
+                  placeholder="Enter 6-digit code"
+                  required
+                />
+              </div>
+              
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 text-red-800 rounded-lg text-sm">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <p>{error}</p>
+                <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                  {error}
                 </div>
               )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="jane.doe@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="remember" 
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  />
-                  <label
-                    htmlFor="remember"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Remember me
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  className="text-sm text-[var(--color-brand-gradient-4)] hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              <Button 
-                type="submit"
-                className="w-full bg-gradient-to-r from-[var(--color-brand-gradient-4)] to-[var(--color-brand-gradient-5)] text-white border-0 hover:from-[var(--color-brand-gradient-3)] hover:to-[var(--color-brand-gradient-4)]"
-              >
-                Sign In
+              
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Confirming...' : 'Confirm'}
               </Button>
-
-              <div className="text-center pt-4 border-t">
-                <p className="text-sm text-muted-foreground">
-                  New to the platform?{' '}
-                  <button
-                    type="button"
-                    className="text-[var(--color-brand-gradient-4)] hover:underline"
-                  >
-                    Create an account
-                  </button>
-                </p>
-              </div>
             </form>
           </CardContent>
         </Card>
-
-        {/* Info Footer */}
-        <Card className="bg-white/90 backdrop-blur">
-          <CardContent className="pt-6">
-            <p className="text-sm text-center text-muted-foreground">
-              For demo purposes, any email and password will work
-            </p>
-          </CardContent>
-        </Card>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--color-brand-gradient-4)] to-[var(--color-brand-gradient-5)] p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack}
+            className="w-fit mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <CardTitle>{isSignUp ? 'Create Nurse Account' : 'Nurse Login'}</CardTitle>
+          <CardDescription>
+            {isSignUp ? 'Join NorthPeak Care as a nurse' : 'Sign in to your nurse account'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={isSignUp ? handleSignUp : handleSignIn} className="space-y-4">
+            {isSignUp && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+1234567890"
+                    required
+                  />
+                </div>
+              </>
+            )}
+            
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              {isSignUp && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Min 12 characters, uppercase, lowercase, number, symbol
+                </p>
+              )}
+            </div>
+            
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                {error}
+              </div>
+            )}
+            
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+            </Button>
+            
+            <Button
+              type="button"
+              variant="link"
+              className="w-full"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError('');
+              }}
+            >
+              {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
