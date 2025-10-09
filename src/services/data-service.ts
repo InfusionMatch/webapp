@@ -145,27 +145,28 @@ export const dataService = {
   // ============================================================================
   
   async createCredential(data: {
-    nurseId: string;
-    type: string;
-    title: string;
-    issuingOrganization?: string;
-    credentialNumber?: string;
-    issueDate?: string;
-    expiryDate?: string;
-    documentUrl?: string;
-  }) {
-    try {
-      const result = await client.models.Credential.create({
-        ...data,
-        verificationStatus: 'pending'
-      });
-      
-      return result.data;
-    } catch (error) {
-      console.error('Error creating credential:', error);
-      throw error;
-    }
-  },
+  nurseId: string;
+  type: "rn_license" | "lpn_license" | "iv_certification" | "cpr_certification" | "bls_certification" | "acls_certification" | "pals_certification" | "oncology_certification" | "other";
+  title: string;
+  issuingOrganization?: string;
+  credentialNumber?: string;
+  issueDate?: string;
+  expiryDate?: string;
+  documentUrl?: string;
+}) {
+  try {
+    const result = await client.models.Credential.create({
+      ...data,
+      verificationStatus: 'pending'
+    });
+    
+    return result.data;
+  } catch (error) {
+    console.error('Error creating credential:', error);
+    throw error;
+  }
+},
+
 
   async listMyCredentials(nurseId: string) {
     try {
