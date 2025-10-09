@@ -9,14 +9,6 @@ export const auth = defineAuth({
         `Welcome to NorthPeak Care! Your verification code is ${createCode()}`
     }
   },
-  // HIPAA: Strong password requirements
-  passwordPolicy: {
-    minLength: 12,
-    requireLowercase: true,
-    requireUppercase: true,
-    requireNumbers: true,
-    requireSymbols: true
-  },
   userAttributes: {
     email: {
       required: true,
@@ -46,5 +38,13 @@ export const auth = defineAuth({
     totp: true,
     sms: true
   },
-  accountRecovery: 'EMAIL_ONLY'
+  accountRecovery: 'EMAIL_ONLY',
+  // HIPAA: Strong password requirements (correct syntax for Gen 2)
+  password: {
+    minLength: 12,
+    requireLowercase: true,
+    requireUppercase: true,
+    requireNumbers: true,
+    requireSymbols: true
+  }
 });
