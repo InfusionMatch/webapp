@@ -9,14 +9,30 @@ const backend = defineBackend({
   storage
 });
 
-// HIPAA: Enable encryption and audit logging
-const dataResources = backend.data.resources;
+// HIPAA: Enable encryption and versioning for S3
+const s3Bucket = backend.storage.resources.bucket;
 
-// Enable X-Ray tracing for API requests (audit trail)
-dataResources.cfnResources.cfnGraphqlApi.xrayEnabled = true;
+// Enable server-side encryption
+s3Bucket.addPropertyOverride('BucketEncryption', {
+  ServerSideEncryptionConfiguration: [
+    {
+      ServerSideEncryptionByDefault: {
+        SSEAlgorithm: 'AES256'
+      },
+      BucketKeyEnabled: true
+    }
+  ]
+});
 
-// Enable CloudWatch logging
-dataResources.cfnResources.cfnGraphqlApi.logConfig = {
-  fieldLogLevel: 'ALL',
-  excludeVerboseContent: false
-};
+// Enable versioning for audit trail
+s3Bucket.addPropertyOverride('VersioningConfiguration', {
+  Status: 'Enabled'
+});
+
+// Block public access
+s3Bucket.addPropertyOverride('PublicAccessBlockConfiguration', {
+  BlockPublicAcls: true,
+  BlockPublicPolicy: true,
+  IgnorePublicAcls: true,
+  RestrictPublicBuckets: true
+});
