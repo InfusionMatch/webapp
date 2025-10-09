@@ -4,4 +4,4 @@ node_modules
 .amplify
 amplify_outputs*
 amplifyconfiguration*
-echo "amplify_outputs.json" >> .gitignore
+echo "amplify_outputs.json" >> .gitignoreawscliv2.zip
