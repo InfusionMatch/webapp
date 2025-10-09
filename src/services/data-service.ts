@@ -1,8 +1,20 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
-// Generate the data client
-const client = generateClient<Schema>();
+// Define credential types
+export type CredentialType = 
+  | "rn_license" 
+  | "lpn_license" 
+  | "iv_certification" 
+  | "cpr_certification" 
+  | "bls_certification" 
+  | "acls_certification" 
+  | "pals_certification" 
+  | "oncology_certification"
+  | "other";
+
+// Generate client on every call - no caching
+const getClient = () => generateClient<Schema>();
 
 export const dataService = {
   // ============================================================================
@@ -17,6 +29,7 @@ export const dataService = {
     phoneNumber: string;
   }) {
     try {
+      const client = getClient();
       const result = await client.models.NurseProfile.create({
         ...data,
         rating: 0,
@@ -39,6 +52,7 @@ export const dataService = {
 
   async getNurseProfile(userId: string) {
     try {
+      const client = getClient();
       const result = await client.models.NurseProfile.list({
         filter: { userId: { eq: userId } }
       });
@@ -52,6 +66,7 @@ export const dataService = {
 
   async updateNurseProfile(id: string, updates: any) {
     try {
+      const client = getClient();
       const result = await client.models.NurseProfile.update({
         id,
         ...updates
@@ -70,6 +85,7 @@ export const dataService = {
   
   async listAvailableVisits() {
     try {
+      const client = getClient();
       const result = await client.models.Visit.list({
         filter: { status: { eq: 'posted' } }
       });
@@ -83,6 +99,7 @@ export const dataService = {
 
   async getVisit(id: string) {
     try {
+      const client = getClient();
       const result = await client.models.Visit.get({ id });
       return result.data;
     } catch (error) {
@@ -93,6 +110,7 @@ export const dataService = {
 
   async listMyVisits(nurseId: string) {
     try {
+      const client = getClient();
       const result = await client.models.Visit.list({
         filter: { assignedNurseId: { eq: nurseId } }
       });
@@ -115,6 +133,7 @@ export const dataService = {
     availabilityConfirmed: boolean;
   }) {
     try {
+      const client = getClient();
       const result = await client.models.Application.create({
         ...data,
         status: 'pending'
@@ -129,6 +148,7 @@ export const dataService = {
 
   async listMyApplications(nurseId: string) {
     try {
+      const client = getClient();
       const result = await client.models.Application.list({
         filter: { nurseId: { eq: nurseId } }
       });
@@ -145,31 +165,32 @@ export const dataService = {
   // ============================================================================
   
   async createCredential(data: {
-  nurseId: string;
-  type: "rn_license" | "lpn_license" | "iv_certification" | "cpr_certification" | "bls_certification" | "acls_certification" | "pals_certification" | "oncology_certification" | "other";
-  title: string;
-  issuingOrganization?: string;
-  credentialNumber?: string;
-  issueDate?: string;
-  expiryDate?: string;
-  documentUrl?: string;
-}) {
-  try {
-    const result = await client.models.Credential.create({
-      ...data,
-      verificationStatus: 'pending'
-    });
-    
-    return result.data;
-  } catch (error) {
-    console.error('Error creating credential:', error);
-    throw error;
-  }
-},
-
+    nurseId: string;
+    type: CredentialType;
+    title: string;
+    issuingOrganization?: string;
+    credentialNumber?: string;
+    issueDate?: string;
+    expiryDate?: string;
+    documentUrl?: string;
+  }) {
+    try {
+      const client = getClient();
+      const result = await client.models.Credential.create({
+        ...data,
+        verificationStatus: 'pending'
+      });
+      
+      return result.data;
+    } catch (error) {
+      console.error('Error creating credential:', error);
+      throw error;
+    }
+  },
 
   async listMyCredentials(nurseId: string) {
     try {
+      const client = getClient();
       const result = await client.models.Credential.list({
         filter: { nurseId: { eq: nurseId } }
       });
@@ -187,6 +208,7 @@ export const dataService = {
   
   async listMyNotifications(userId: string) {
     try {
+      const client = getClient();
       const result = await client.models.Notification.list({
         filter: { userId: { eq: userId } }
       });
@@ -200,6 +222,7 @@ export const dataService = {
 
   async markNotificationAsRead(id: string) {
     try {
+      const client = getClient();
       const result = await client.models.Notification.update({
         id,
         isRead: true,
@@ -219,6 +242,7 @@ export const dataService = {
   
   async listMyConversations(userId: string) {
     try {
+      const client = getClient();
       const result = await client.models.Conversation.list();
       
       // Filter conversations where user is a participant
@@ -233,6 +257,7 @@ export const dataService = {
 
   async listMessagesInConversation(conversationId: string) {
     try {
+      const client = getClient();
       const result = await client.models.Message.list({
         filter: { conversationId: { eq: conversationId } }
       });
@@ -253,6 +278,7 @@ export const dataService = {
     messageType?: 'text' | 'document' | 'system';
   }) {
     try {
+      const client = getClient();
       const result = await client.models.Message.create({
         ...data,
         messageType: data.messageType || 'text',
