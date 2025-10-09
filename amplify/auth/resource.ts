@@ -38,13 +38,5 @@ export const auth = defineAuth({
     totp: true,
     sms: true
   },
-  accountRecovery: 'EMAIL_ONLY',
-  // HIPAA: Strong password requirements (correct syntax for Gen 2)
-  password: {
-    minLength: 12,
-    requireLowercase: true,
-    requireUppercase: true,
-    requireNumbers: true,
-    requireSymbols: true
-  }
+  accountRecovery: 'EMAIL_ONLY'
 });
